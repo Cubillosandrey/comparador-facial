@@ -3,43 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comparador de Rostros (URL + Subida)</title>
+    <title>Comparador de Rostros</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background-color: #f0f2f5; }
-        .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; margin-bottom: 20px; }
-        .image-box { display: flex; flex-direction: column; align-items: center; width: 320px; }
-        .image-box input[type="url"] { width: 100%; padding: 8px; margin-bottom: 10px; }
-        img { max-width: 300px; height: 300px; object-fit: cover; border: 2px solid #ccc; border-radius: 8px; margin-top: 10px; background-color: #e9e9e9; }
-        button { font-size: 1.2em; padding: 10px 20px; cursor: pointer; border-radius: 5px; border: none; background-color: #007bff; color: white; }
-        button:disabled { background-color: #aaa; }
-        #resultado { font-size: 1.5em; font-weight: bold; margin-top: 20px; min-height: 30px; text-align: center;}
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background-color: #f0f2f5; margin: 0; min-height: 100vh; box-sizing: border-box; }
+        .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-bottom: 20px; }
+        img { max-width: 300px; max-height: 300px; object-fit: cover; border: 4px solid #ccc; border-radius: 12px; background-color: #e9e9e9; }
+        #resultado { font-size: 2em; font-weight: bold; margin-top: 20px; padding: 20px; border-radius: 12px; text-align: center; }
+        .loading { background-color: #ffc107; color: #333; }
+        .success { background-color: #28a745; color: white; }
+        .error { background-color: #dc3545; color: white; }
     </style>
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script defer src="script.js"></script>
 </head>
 <body>
 
-    <h1>Comparador de Rostros 🎭</h1>
-    <p>Pega la URL de una imagen y sube otra para compararlas.</p>
-
     <div class="container">
-        <div class="image-box">
-            <label for="imagenUrl">Imagen 1 (desde URL)</label>
-            <input type="url" id="imagenUrl" placeholder="Pega la URL de la imagen aquí">
-            <img id="imgUrl" src="" alt="Vista previa de URL" crossorigin="anonymous">
-        </div>
-        <div class="image-box">
-            <label for="imagenUpload">Imagen 2 (subir archivo)</label>
-            <input type="file" id="imagenUpload" accept="image/*">
-            <img id="imgUpload" src="" alt="Vista previa de archivo subido">
-        </div>
+        <img id="img1" src="" alt="Imagen 1">
+        <img id="img2" src="" alt="Imagen 2">
     </div>
 
-    <button id="compararBtn">Comparar Rostros</button>
-
-    <div id="resultado"></div>
-
-    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-    
-    <script defer src="script.js"></script>
+    <div id="resultado" class="loading">Cargando...</div>
 
 </body>
 </html>
