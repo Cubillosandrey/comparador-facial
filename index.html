@@ -47,7 +47,7 @@
 
             // 2. Cargar los modelos
             resultadoDiv.innerText = "Cargando modelos... ⏳";
-            const MODEL_URL = 'https://cubillosandrey.github.io/reconocimiento-models/';
+            const MODEL_URL = './models';
             try {
                 await Promise.all([
                     faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
