@@ -1,98 +1,81 @@
-// Seleccionamos los nuevos elementos del DOM
-const imagenUrlInput = document.getElementById('imagenUrl');
-const imagenUploadInput = document.getElementById('imagenUpload');
-const imgUrl = document.getElementById('imgUrl');
-const imgUpload = document.getElementById('imgUpload');
-const compararBtn = document.getElementById('compararBtn');
-const resultadoDiv = document.getElementById('resultado');
+// --- FUNCIÓN PRINCIPAL QUE SE EJECUTA SOLA ---
+(async () => {
+    const img1Element = document.getElementById('img1');
+    const img2Element = document.getElementById('img2');
+    const resultadoDiv = document.getElementById('resultado');
 
-// --- Cargar modelos al iniciar (sin cambios) ---
-async function cargarModelos() {
-    const MODEL_URL = 'https://cubillosandrey.github.io/reconocimiento-models/'; // Asegúrate que la carpeta 'models' está en tu proyecto
-    compararBtn.disabled = true;
-    resultadoDiv.innerText = 'Cargando modelos... ⏳';
-    
-    await Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-    ]);
-    
-    resultadoDiv.innerText = 'Modelos cargados. ¡Listo para comparar! ✅';
-    compararBtn.disabled = false;
-}
+    // 1. Obtener las URLs de las imágenes desde los parámetros de la página
+    const params = new URLSearchParams(window.location.search);
+    const p1 = params.get('p1');
+    const p2 = params.get('p2');
 
-cargarModelos();
-
-// --- Manejar la entrada de la URL ---
-imagenUrlInput.addEventListener('change', () => {
-    // Simplemente asignamos la URL al src del elemento img
-    imgUrl.src = imagenUrlInput.value;
-});
-
-// --- Manejar la subida del archivo (previsualización) ---
-imagenUploadInput.addEventListener('change', () => {
-    if (imagenUploadInput.files && imagenUploadInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            imgUpload.src = e.target.result;
-        };
-        reader.readAsDataURL(imagenUploadInput.files[0]);
-    }
-});
-
-// --- Lógica de comparación ---
-compararBtn.addEventListener('click', async () => {
-    // Verificamos que ambas imágenes tengan una fuente (src) válida
-    if (!imgUrl.src || !imgUpload.src || imgUrl.src.endsWith('#') || imgUpload.src.endsWith('#')) {
-        resultadoDiv.innerText = 'Por favor, proporciona una URL y sube un archivo.';
+    if (!p1 || !p2) {
+        resultadoDiv.innerText = "Error: Faltan las URLs de las imágenes (p1 y p2).";
+        resultadoDiv.className = 'error';
         return;
     }
 
-    resultadoDiv.innerText = 'Procesando... 🤔';
+    img1Element.src = p1;
+    img2Element.src = p2;
+    img1Element.crossOrigin = 'anonymous';
+    img2Element.crossOrigin = 'anonymous';
 
+
+    // 2. Cargar los modelos
+    resultadoDiv.innerText = "Cargando modelos... ⏳";
+    const MODEL_URL = './models'; // Busca la carpeta 'models' en el mismo directorio
     try {
-        // Obtener descriptores de ambas imágenes
-        const descriptor1 = await obtenerDescriptor(imgUrl);
-        const descriptor2 = await obtenerDescriptor(imgUpload);
+        await Promise.all([
+            faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+    } catch (e) {
+        resultadoDiv.innerText = "Error al cargar los modelos de IA.";
+        resultadoDiv.className = 'error';
+        console.error("Error en modelos:", e);
+        return;
+    }
 
-        if (!descriptor1 || !descriptor2) {
-            resultadoDiv.innerText = 'No se pudo detectar un rostro en una o ambas imágenes. ❌';
+    // 3. Esperar a que las imágenes se carguen y luego compararlas
+    try {
+        resultadoDiv.innerText = "Analizando rostros... 🤔";
+        const descriptors = await Promise.all([
+            getDescriptor(img1Element),
+            getDescriptor(img2Element)
+        ]);
+
+        if (!descriptors[0] || !descriptors[1]) {
+            resultadoDiv.innerText = "No se pudo detectar un rostro en una o ambas imágenes.";
+            resultadoDiv.className = 'error';
             return;
         }
 
-        // Calcular la distancia
-        const distancia = faceapi.euclideanDistance(descriptor1, descriptor2);
-        const umbral = 0.6; // Umbral de similitud
-        const sonLaMismaPersona = distancia < umbral;
-
-        // Mostrar resultado
-        if (sonLaMismaPersona) {
-            resultadoDiv.innerHTML = `✅ **¡Son la misma persona!**<br>(Distancia: ${distancia.toFixed(4)})`;
+        const distancia = faceapi.euclideanDistance(descriptors[0], descriptors[1]);
+        const umbral = 0.6;
+        
+        if (distancia < umbral) {
+            resultadoDiv.innerHTML = `✅ ¡Son la misma persona!<br><small>(Distancia: ${distancia.toFixed(4)})</small>`;
+            resultadoDiv.className = 'success';
         } else {
-            resultadoDiv.innerHTML = `❌ **No son la misma persona.**<br>(Distancia: ${distancia.toFixed(4)})`;
+            resultadoDiv.innerHTML = `❌ No son la misma persona.<br><small>(Distancia: ${distancia.toFixed(4)})</small>`;
+            resultadoDiv.className = 'error';
         }
-
-    } catch (error) {
-        console.error(error);
-        resultadoDiv.innerText = 'Ocurrió un error. Verifica que la URL de la imagen sea accesible (CORS).';
+    } catch (e) {
+        resultadoDiv.innerText = "Error al procesar las imágenes.";
+        resultadoDiv.className = 'error';
+        console.error("Error en procesamiento:", e);
     }
-});
+})();
 
-// --- Función para obtener el descriptor facial (sin cambios) ---
-async function obtenerDescriptor(imgElement) {
-    // Esperamos a que la imagen se cargue completamente antes de procesarla
+// --- Función de ayuda para obtener el descriptor de una imagen ---
+async function getDescriptor(imgElement) {
+    // Esperar a que la imagen se cargue completamente
     await new Promise((resolve, reject) => {
         imgElement.onload = resolve;
         imgElement.onerror = reject;
-        // Si la imagen ya está cargada (desde caché), resolvemos inmediatamente
-        if (imgElement.complete) {
-            resolve();
-        }
+        if (imgElement.complete && imgElement.naturalHeight !== 0) resolve();
     });
 
-    const deteccion = await faceapi.detectSingleFace(imgElement)
-                                    .withFaceLandmarks()
-                                    .withFaceDescriptor();
-    return deteccion ? deteccion.descriptor : null;
+    return await faceapi.detectSingleFace(imgElement).withFaceLandmarks().withFaceDescriptor();
 }
